@@ -3,11 +3,12 @@
 #include <sys/socket.h>      // socket, recvfrom
 #include <netinet/in.h>      // htons
 #include <linux/if_ether.h>  // ETH_P_ALL
+#include <linux/ip.h>  
 
 
 int main() {
 
-    // Part 1
+    // Part 1 
     int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sock == -1) {
         perror("socket");
@@ -28,7 +29,7 @@ int main() {
 
     printf("\n");
 
-    // Part 2
+    // Part 2  (parsing Ethernet header)
     struct ethhdr *eth = (struct ethhdr *)buffer;
 
     printf("----------------------------------------\n");
@@ -36,6 +37,10 @@ int main() {
     printf("mac source: %02x:%02x:%02x:%02x:%02x:%02x\n", eth->h_source[0], eth->h_source[1], eth->h_source[2], eth->h_source[3], eth->h_source[4], eth->h_source[5]);
     printf("EtherType: %04x\n", ntohs(eth->h_proto));
 
-    // Part 3
-    
+    // Part 3  (parsing IP header)
+    if (ethhdr->h_proto != 0x0800) {
+        
+    }
+
+
 }
