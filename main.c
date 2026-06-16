@@ -4,20 +4,21 @@
 #include <netinet/in.h>      // htons
 #include <linux/if_ether.h>  // ETH_P_ALL
 #include <linux/ip.h>  
+#include <arpa/inet.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
 
 
 int main() {
 
-    // Part 1 
+    // Part 1   (capture raw packets)
     int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sock == -1) {
         perror("socket");
         return 1;
     }
 
-
     while (1){
-
         unsigned char buffer[65535];
 
         int packet_size = recvfrom(sock, buffer, 65535, 0, NULL, NULL);
@@ -25,12 +26,6 @@ int main() {
             perror("recvfrom");
             return 1;
         }
-
-        for (int i = 0; i < packet_size; i++){
-            printf("%02x ", buffer[i]);
-        }
-
-        printf("\n");
         //--------------------------------------------------------------------------------
 
         // Part 2  (parsing Ethernet header)
@@ -48,16 +43,19 @@ int main() {
         //--------------------------------------------------------------------------------
 
         // Part 3  (parsing IP header)
-        // if (ntohs(eth->h_proto) == 0x0800) {        // 0x0800 is the code for IPv4
 
         struct iphdr *ip = (struct iphdr *)(buffer + 14);           // grep -A 25 "struct iphdr" /usr/include/linux/ip.h
 
-        if (ip->daddr == inet_addr("127.0.0.1") || ip->saddr == inet_addr("127.0.0.1")) continue;
+        // if (ip->daddr == inet_addr("127.0.0.1") || ip->saddr == inet_addr("127.0.0.1")) continue;
 
         unsigned char *src = (unsigned char *)&(ip->saddr);
         unsigned char *dst = (unsigned char *)&(ip->daddr);
 
-        printf("***\ncurrent dst value:  %d\n***\n", ip->daddr);
+
+        for (int i = 0; i < packet_size; i++){
+            printf("%02x ", buffer[i]);
+        }
+        printf("\n");
 
         printf("----------------------------------------\n");
         printf("IP header:\n");
@@ -73,8 +71,23 @@ int main() {
         printf("saddr: %d.%d.%d.%d\n", src[0], src[1], src[2], src[3]);
         printf("daddr: %d.%d.%d.%d\n", dst[0], dst[1],dst[2], dst[3]);
         printf("----------------------------------------\n");
+        //--------------------------------------------------------------------------------
 
-        break;
+        // Part 4  (parsing TCP & UDP headers to get source and destination ports)
+        if (ip->protocol == 6) {
+            struct tcphdr *tcp = (struct tcphdr *)(buffer + 14 + ip->ihl * 4);      // grep -A 20 "struct tcphdr" /usr/include/linux/tcp.h
+            printf("Source port: %d\n", ntohs(tcp->source));
+            printf("Dest port: %d\n", ntohs(tcp->dest));
+        }
+        if (ip->protocol == 17) {
+            struct udphdr *udp = (struct udphdr *)(buffer + 14 + ip->ihl * 4);     // grep -A 10 "struct udphdr" /usr/include/linux/udp.h 
+            printf("Source port: %d\n", ntohs(udp->source));
+            printf("Dest port: %d\n", ntohs(udp->dest));
+        }
+
+
+
+        printf("-----------------------------------------------\n");
     }
 }
  
