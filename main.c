@@ -8,6 +8,38 @@
 #include <arpa/inet.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
+#include <time.h>
+
+#define TABLE_SIZE 1024
+
+// Part 6  (flow tracking)
+            struct flow_key {
+                uint32_t saddr;
+                uint32_t daddr;
+                uint16_t sport;
+                uint16_t dport;
+                uint8_t protocol;
+            };
+
+            struct flow_stats {
+                struct flow_key key;      // which flow is it
+                uint64_t packets;         // how many packets
+                uint64_t bytes;           // total bytes
+                time_t first_seen;        // when the first packet arrived
+                time_t last_seen;         // when the latest packet arrived
+                int active;               // does flow has been stored here ? 
+            };
+
+
+struct flow_stats flow_table[TABLE_SIZE];
+
+
+uint32_t hash_flow(struct flow_key *key) {
+    uint32_t hash = key->saddr ^ key->daddr ^ key->sport ^ key->dport ^ key->protocol;
+    return hash % TABLE_SIZE;
+}
+
+
 
 
 int main() {
@@ -19,8 +51,30 @@ int main() {
         return 1;
     }
 
+    unsigned char buffer[65535];
+
+    // Part 6  (flow tracking)
+            struct flow_key {
+                uint32_t sourceIP;
+                uint32_t destIP;
+                uint16_t sport;
+                uint16_t dport;
+                uint8_t protocol;
+            };
+
+            struct flow_stats {
+                struct flow_key key;      // which flow is it
+                uint64_t packets;         // how many packets
+                uint64_t bytes;           // total bytes
+                time_t first_seen;        // when the first packet arrived
+                time_t last_seen;         // when the latest packet arrived
+                int active;               // does flow has been stored here ? 
+            };
+
+    //--------------------------------------------------------------------------------
+
+
     while (1){
-        unsigned char buffer[65535];
 
         int packet_size = recvfrom(sock, buffer, 65535, 0, NULL, NULL);
         if (packet_size == -1) {
@@ -99,6 +153,8 @@ int main() {
             dst[0], dst[1], dst[2], dst[3], dport,
             proto, ntohs(ip->tot_len)
         );
+        //--------------------------------------------------------------------------------
+
     }
 }
  
