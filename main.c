@@ -10,29 +10,31 @@
 #include <linux/udp.h>
 #include <time.h>
 
+
+
+
+//--------------------------------------------------------------------------------
+// Part 6  (flow tracking - data structures and functions)
+struct flow_key {
+    uint32_t saddr;
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
+    uint8_t protocol;
+};
+
+struct flow_stats {
+    struct flow_key key;      // which flow is it
+    uint64_t packets;         // how many packets
+    uint64_t bytes;           // total bytes
+    time_t first_seen;        // when the first packet arrived
+    time_t last_seen;         // when the latest packet arrived
+    int active;               // does flow has been stored here ? 
+};
+
 #define TABLE_SIZE 1024
 
-// Part 6  (flow tracking)
-            struct flow_key {
-                uint32_t saddr;
-                uint32_t daddr;
-                uint16_t sport;
-                uint16_t dport;
-                uint8_t protocol;
-            };
-
-            struct flow_stats {
-                struct flow_key key;      // which flow is it
-                uint64_t packets;         // how many packets
-                uint64_t bytes;           // total bytes
-                time_t first_seen;        // when the first packet arrived
-                time_t last_seen;         // when the latest packet arrived
-                int active;               // does flow has been stored here ? 
-            };
-
-
 struct flow_stats flow_table[TABLE_SIZE];
-
 
 uint32_t hash_flow(struct flow_key *key) {
     uint32_t hash = key->saddr ^ key->daddr ^ key->sport ^ key->dport ^ key->protocol;
@@ -40,6 +42,46 @@ uint32_t hash_flow(struct flow_key *key) {
 }
 
 
+int keys_match(struct flow_key *a, struct flow_key *b) {
+    return a->saddr == b->saddr &&
+           a->daddr == b->daddr &&
+           a->sport == b->sport &&
+           a->dport == b->dport &&
+           a->protocol == b->protocol;
+}
+
+
+int update_flow(struct flow_key *key, uint32_t packet_size) {
+    uint32_t hashed_key = hash_flow(key);
+
+    int i;
+    for (i = 0; i < TABLE_SIZE; i++) {
+        uint32_t index = (hashed_key + i) % TABLE_SIZE;
+
+        if (!flow_table[index].active) {
+            // empty slot -> new flow
+            flow_table[index].key = *key;
+            flow_table[index].packets = 1;
+            flow_table[index].bytes = packet_size;
+            time_t t = time(NULL);
+            flow_table[index].first_seen = t;
+            flow_table[index].last_seen = t;
+            flow_table[index].active = 1;
+            break;
+        }
+        if (keys_match(&flow_table[index].key, key)) {
+            // same flow 
+            flow_table[index].packets += 1;
+            flow_table[index].bytes += packet_size;
+            flow_table[index].last_seen = time(NULL);
+            break;
+        }
+        // different flow -> try next slot (continue loop)
+    }
+
+    return i == TABLE_SIZE ? -1 : 0;
+}
+//--------------------------------------------------------------------------------
 
 
 int main() {
@@ -52,27 +94,6 @@ int main() {
     }
 
     unsigned char buffer[65535];
-
-    // Part 6  (flow tracking)
-            struct flow_key {
-                uint32_t sourceIP;
-                uint32_t destIP;
-                uint16_t sport;
-                uint16_t dport;
-                uint8_t protocol;
-            };
-
-            struct flow_stats {
-                struct flow_key key;      // which flow is it
-                uint64_t packets;         // how many packets
-                uint64_t bytes;           // total bytes
-                time_t first_seen;        // when the first packet arrived
-                time_t last_seen;         // when the latest packet arrived
-                int active;               // does flow has been stored here ? 
-            };
-
-    //--------------------------------------------------------------------------------
-
 
     while (1){
 
@@ -145,6 +166,17 @@ int main() {
         } else {
             sprintf(proto, "PROTO(%d)", ip->protocol);
         }
+        //--------------------------------------------------------------------------------
+
+        // Part 6  (flow tracking - updating)
+        struct flow_key key;
+        key.saddr = ip->saddr;
+        key.daddr = ip->daddr;
+        key.sport = sport;
+        key.dport = dport;
+        key.protocol = ip->protocol;
+            
+        update_flow(&key, ntohs(ip->tot_len));
         //--------------------------------------------------------------------------------
 
         // Part 5  (single-line packet summary)
