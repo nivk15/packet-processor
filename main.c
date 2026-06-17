@@ -11,8 +11,6 @@
 #include <time.h>
 
 
-
-
 //--------------------------------------------------------------------------------
 // Part 6  (flow tracking - data structures and functions)
 struct flow_key {
@@ -81,6 +79,36 @@ int update_flow(struct flow_key *key, uint32_t packet_size) {
 
     return i == TABLE_SIZE ? -1 : 0;
 }
+//--------------------------------------------------------------------------------
+
+
+void print_flows(struct flow_stats *table) {
+    printf("%-25s %-25s %-8s %-8s %-10s %s\n",
+           "SRC IP:PORT", "DST IP:PORT", "PROTO", "PKTS", "BYTES", "DURATION");
+
+    for (int i = 0; i < TABLE_SIZE; i++ ) {
+        if (table[i].active) {
+            struct flow_key key = table[i].key;
+            unsigned char *src = (unsigned char *)&key.saddr;
+            unsigned char *dst = (unsigned char *)&key.daddr;
+            char proto[16];
+            if (key.protocol == 6) strcpy(proto, "TCP");
+            else if (key.protocol == 17) strcpy(proto, "UDP");
+            else sprintf(proto, "PROTO(%d)", key.protocol);
+            char src_str[32], dst_str[32];
+
+            sprintf(src_str, "%d.%d.%d.%d:%d", src[0], src[1], src[2], src[3], key.sport);
+            sprintf(dst_str, "%d.%d.%d.%d:%d", dst[0], dst[1], dst[2], dst[3], key.dport);
+
+            printf("%-25s %-25s %-8s %-8lu %-10lu %.0fs\n",
+                src_str, dst_str, proto,
+                table[i].packets, table[i].bytes,
+                difftime(table[i].last_seen, table[i].first_seen));
+        }
+    }
+
+}
+
 //--------------------------------------------------------------------------------
 
 
