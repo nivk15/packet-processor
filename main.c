@@ -85,37 +85,57 @@ int update_flow(struct flow_key *key, uint32_t packet_size) {
 }
 //--------------------------------------------------------------------------------
 
+int compar(const void *a, const void *b) {
+    struct flow_stats *p_flow_A = (struct flow_stats *)a;
+    struct flow_stats *p_flow_B = (struct flow_stats *)b;
 
-int print_flows(struct flow_stats *table, int max_rows) {
-    int count = 0;
+    uint64_t bytes_A = p_flow_A->bytes;
+    uint64_t bytes_B = p_flow_B->bytes;
 
+    if (bytes_A < bytes_B) {
+        return 1;
+    } else if (bytes_A == bytes_B) {
+        return 0;
+    } else return -1;
+}
+
+
+
+int print_flows(struct flow_stats *table, int limit) {
     printf("%-25s %-25s %-8s %-8s %-10s %s\n",
            "SRC IP:PORT", "DST IP:PORT", "PROTO", "PKTS", "BYTES", "DURATION");
 
-    for (int i = 0; i < TABLE_SIZE && count < max_rows; i++ ) {
+    struct flow_stats active[TABLE_SIZE];
+    int n = 0;
+    for (int i = 0; i < TABLE_SIZE; i++) {
         if (table[i].active) {
-            struct flow_key key = table[i].key;
-            unsigned char *src = (unsigned char *)&key.saddr;
-            unsigned char *dst = (unsigned char *)&key.daddr;
-            char proto[16];
-            if (key.protocol == 6) strcpy(proto, "TCP");
-            else if (key.protocol == 17) strcpy(proto, "UDP");
-            else if (key.protocol == 1) strcpy(proto, "ICMP");
-            else sprintf(proto, "PROTO(%d)", key.protocol);
-            char src_str[32], dst_str[32];
-
-            sprintf(src_str, "%d.%d.%d.%d:%d", src[0], src[1], src[2], src[3], key.sport);
-            sprintf(dst_str, "%d.%d.%d.%d:%d", dst[0], dst[1], dst[2], dst[3], key.dport);
-
-            printf("%-25s %-25s %-8s %-8lu %-10lu %.0fs\n",
-                src_str, dst_str, proto,
-                table[i].packets, table[i].bytes,
-                difftime(table[i].last_seen, table[i].first_seen));
-            
-            count++;
+            active[n++] = table[i];
         }
     }
-    return count;
+
+    qsort(active, n, sizeof(struct flow_stats), compar);
+    limit = (n < limit) ? n : limit;
+
+    for (int i = 0; i < limit; i++ ) {
+        struct flow_key key = active[i].key;
+        unsigned char *src = (unsigned char *)&key.saddr;
+        unsigned char *dst = (unsigned char *)&key.daddr;
+        char proto[16];
+        if (key.protocol == 6) strcpy(proto, "TCP");
+        else if (key.protocol == 17) strcpy(proto, "UDP");
+        else if (key.protocol == 1) strcpy(proto, "ICMP");
+        else sprintf(proto, "PROTO(%d)", key.protocol);
+        char src_str[32], dst_str[32];
+
+        sprintf(src_str, "%d.%d.%d.%d:%d", src[0], src[1], src[2], src[3], key.sport);
+        sprintf(dst_str, "%d.%d.%d.%d:%d", dst[0], dst[1], dst[2], dst[3], key.dport);
+
+        printf("%-25s %-25s %-8s %-8lu %-10lu %.0fs\n",
+            src_str, dst_str, proto,
+            active[i].packets, active[i].bytes,
+            difftime(active[i].last_seen, active[i].first_seen));
+    }
+    return limit;       // how many flows we printed
 }
 
 //--------------------------------------------------------------------------------
@@ -127,6 +147,8 @@ void handle_sigint(int sig) {
     close(sock);
     exit(0);
 }
+
+
 
 //--------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------
