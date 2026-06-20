@@ -37,6 +37,7 @@ struct flow_stats {
 #define TABLE_SIZE 1024
 struct flow_stats flow_table[TABLE_SIZE];
 int sock;
+volatile sig_atomic_t got_sigint = 0;
 
 uint32_t hash_flow(struct flow_key *key) {
     uint32_t hash = key->saddr ^ key->daddr ^ key->sport ^ key->dport ^ key->protocol;
@@ -141,11 +142,7 @@ int print_flows(struct flow_stats *table, int limit) {
 //--------------------------------------------------------------------------------
 
 void handle_sigint(int sig) {
-    printf("\033[H\033[J");   
-    int total = print_flows(flow_table, TABLE_SIZE);        // show all the rows
-    printf("\n(Total flows tracked: %d)\n", total);
-    close(sock);
-    exit(0);
+    got_sigint = 1;
 }
 
 
@@ -175,7 +172,10 @@ int main() {
 
         int packet_size = recvfrom(sock, buffer, 65535, 0, NULL, NULL);
         if (packet_size == -1) {
-            if (errno == EINTR) continue;           // signal interrupted recvfrom, not a real error
+            if (errno == EINTR) { 
+                if (got_sigint) break;
+                continue; 
+            }
             perror("recvfrom");
             return 1;
         }
@@ -235,5 +235,11 @@ int main() {
         print_flows(flow_table, 20);        // show live only 20 rows to work in terminal size window.
 
     }
+
+    printf("\033[H\033[J");
+    int total = print_flows(flow_table, TABLE_SIZE);
+    printf("\n(Total flows tracked: %d)\n", total);
+    close(sock);
+    return 0;
 }
  
