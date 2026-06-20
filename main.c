@@ -12,6 +12,7 @@
 #include <time.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 
 
 //--------------------------------------------------------------------------------
@@ -152,6 +153,7 @@ int main() {
 
         int packet_size = recvfrom(sock, buffer, 65535, 0, NULL, NULL);
         if (packet_size == -1) {
+            if (errno == EINTR) continue;           // signal interrupted recvfrom, not a real error
             perror("recvfrom");
             return 1;
         }
