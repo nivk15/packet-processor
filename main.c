@@ -83,13 +83,13 @@ int update_flow(struct flow_key *key, uint32_t packet_size) {
 //--------------------------------------------------------------------------------
 
 
-void print_flows(struct flow_stats *table) {
+int print_flows(struct flow_stats *table, int max_rows) {
     int count = 0;
-    
+
     printf("%-25s %-25s %-8s %-8s %-10s %s\n",
            "SRC IP:PORT", "DST IP:PORT", "PROTO", "PKTS", "BYTES", "DURATION");
 
-    for (int i = 0; i < TABLE_SIZE; i++ ) {
+    for (int i = 0; i < TABLE_SIZE && count < max_rows; i++ ) {
         if (table[i].active) {
             struct flow_key key = table[i].key;
             unsigned char *src = (unsigned char *)&key.saddr;
@@ -108,16 +108,19 @@ void print_flows(struct flow_stats *table) {
                 src_str, dst_str, proto,
                 table[i].packets, table[i].bytes,
                 difftime(table[i].last_seen, table[i].first_seen));
+            
+            count++;
         }
     }
-
+    return count;
 }
 
 //--------------------------------------------------------------------------------
 
 void handle_sigint(int sig) {
     printf("\033[H\033[J");   
-    print_flows(flow_table);
+    int total = print_flows(flow_table, TABLE_SIZE);        // show all the rows
+    printf("\n(Total flows tracked: %d)\n", total);
     exit(0);
 }
 
@@ -240,7 +243,7 @@ int main() {
         // clear screen: * move cursor to top-left:  \033[H   
         //               * erase everything from cursor to end of screen: \033[J 
         printf("\033[H\033[J");   
-        print_flows(flow_table);
+        print_flows(flow_table, 20);        // show live only 20 rows to work in terminal size window.
 
     }
 }
