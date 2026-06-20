@@ -9,6 +9,7 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 #include <time.h>
+#include <signal.h>
 
 
 //--------------------------------------------------------------------------------
@@ -83,6 +84,8 @@ int update_flow(struct flow_key *key, uint32_t packet_size) {
 
 
 void print_flows(struct flow_stats *table) {
+    int count = 0;
+    
     printf("%-25s %-25s %-8s %-8s %-10s %s\n",
            "SRC IP:PORT", "DST IP:PORT", "PROTO", "PKTS", "BYTES", "DURATION");
 
@@ -94,6 +97,7 @@ void print_flows(struct flow_stats *table) {
             char proto[16];
             if (key.protocol == 6) strcpy(proto, "TCP");
             else if (key.protocol == 17) strcpy(proto, "UDP");
+            else if (key.protocol == 1) strcpy(proto, "ICMP");
             else sprintf(proto, "PROTO(%d)", key.protocol);
             char src_str[32], dst_str[32];
 
@@ -111,8 +115,22 @@ void print_flows(struct flow_stats *table) {
 
 //--------------------------------------------------------------------------------
 
+void handle_sigint(int sig) {
+    printf("\033[H\033[J");   
+    print_flows(flow_table);
+    exit(0);
+}
+
+
 
 int main() {
+
+    struct sigaction sa;
+    sa.sa_handler = handle_sigint;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGINT, &sa, NULL);
+
 
     // Part 1   (capture raw packets)
     int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
@@ -122,6 +140,7 @@ int main() {
     }
 
     unsigned char buffer[65535];
+
 
     while (1){
 
@@ -191,6 +210,8 @@ int main() {
             sport = ntohs(udp->source);
             dport = ntohs(udp->dest);
             strcpy(proto, "UDP");
+        } else if (ip->protocol == 1) {
+            strcpy(proto, "ICMP");
         } else {
             sprintf(proto, "PROTO(%d)", ip->protocol);
         }
@@ -208,12 +229,18 @@ int main() {
         //--------------------------------------------------------------------------------
 
         // Part 5  (single-line packet summary)
-        printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d %s %d bytes\n",
-            src[0], src[1], src[2], src[3], sport,
-            dst[0], dst[1], dst[2], dst[3], dport,
-            proto, ntohs(ip->tot_len)
-        );
+        // printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d %s %d bytes\n",
+        //     src[0], src[1], src[2], src[3], sport,
+        //     dst[0], dst[1], dst[2], dst[3], dport,
+        //     proto, ntohs(ip->tot_len)
+        // );
         //--------------------------------------------------------------------------------
+
+
+        // clear screen: * move cursor to top-left:  \033[H   
+        //               * erase everything from cursor to end of screen: \033[J 
+        printf("\033[H\033[J");   
+        print_flows(flow_table);
 
     }
 }
