@@ -7,7 +7,7 @@ Captures live network traffic, parses protocol headers (Ethernet, IP, TCP, UDP, 
 ## Features
 
 - Raw packet capture using `AF_PACKET` sockets — no external libraries
-- Protocol parsing: Ethernet (IEEE 802.3), IPv4, TCP, UDP, ICMP
+- Protocol parsing: Ethernet, IPv4, TCP, UDP, ICMP
 - Flow classification by 5-tuple (src IP, dst IP, src port, dst port, protocol)
 - Hash table with linear probing for flow tracking
 - Live terminal dashboard showing top 20 flows sorted by bytes
