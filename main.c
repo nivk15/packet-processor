@@ -142,6 +142,7 @@ int print_flows(struct flow_stats *table, int limit) {
 //--------------------------------------------------------------------------------
 
 void handle_sigint(int sig) {
+    (void)sig;      // sig parameter required by handler signature - here we suppress unused parameter warning
     got_sigint = 1;
 }
 
@@ -190,9 +191,6 @@ int main() {
         // Part 3  (parsing IP header)
 
         struct iphdr *ip = (struct iphdr *)(buffer + 14);           // grep -A 25 "struct iphdr" /usr/include/linux/ip.h
-
-        unsigned char *src = (unsigned char *)&(ip->saddr);
-        unsigned char *dst = (unsigned char *)&(ip->daddr);
 
         // --------------------------------------------------------------------------------
 
