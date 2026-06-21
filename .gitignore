@@ -1,0 +1,4 @@
+sniffer
+*.o
+old.c
+output.txt
