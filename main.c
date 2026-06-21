@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 #include <stdio.h>           // printf
-#include <stdlib.h>          // exit
+#include <stdlib.h>          // qsort
 #include <string.h>
 #include <sys/socket.h>      // socket, recvfrom
 #include <netinet/in.h>      // htons
@@ -181,30 +181,37 @@ int main() {
             return 1;
         }
         //--------------------------------------------------------------------------------
-
         // Part 2  (parsing Ethernet header)
+        if ((size_t)packet_size < ETH_HLEN) continue;     // too short for Ethernet header
+
         struct ethhdr *eth = (struct ethhdr *)buffer;           // grep -A 5 "struct ethhdr" /usr/include/linux/if_ether.h
-        
+
+        //--------------------------------------------------------------------------------
         if (ntohs(eth->h_proto) != 0x0800) continue;           // 0x0800 is the code for IPv4
         //--------------------------------------------------------------------------------
 
         // Part 3  (parsing IP header)
+        if ((size_t)packet_size < ETH_HLEN + sizeof(struct iphdr)) continue;       // too short for IP header
 
-        struct iphdr *ip = (struct iphdr *)(buffer + 14);           // grep -A 25 "struct iphdr" /usr/include/linux/ip.h
+        struct iphdr *ip = (struct iphdr *)(buffer + ETH_HLEN);           // grep -A 25 "struct iphdr" /usr/include/linux/ip.h
 
         // --------------------------------------------------------------------------------
 
         // Part 4  (parsing TCP & UDP headers to get source and destination ports)
+
         int sport = 0, dport = 0;
         char proto[16];
+        int ip_header_len = ip->ihl * 4;
 
         if (ip->protocol == 6) {
-            struct tcphdr *tcp = (struct tcphdr *)(buffer + 14 + ip->ihl * 4);      // grep -A 20 "struct tcphdr" /usr/include/linux/tcp.h
+            if ((size_t)packet_size < ETH_HLEN + ip_header_len + sizeof(struct tcphdr)) continue;  // too short for TCP header
+            struct tcphdr *tcp = (struct tcphdr *)(buffer + ETH_HLEN + ip_header_len);      // grep -A 20 "struct tcphdr" /usr/include/linux/tcp.h
             sport = ntohs(tcp->source);
             dport = ntohs(tcp->dest);
             strcpy(proto, "TCP");
         } else if (ip->protocol == 17) {
-            struct udphdr *udp = (struct udphdr *)(buffer + 14 + ip->ihl * 4);     // grep -A 10 "struct udphdr" /usr/include/linux/udp.h 
+            if ((size_t)packet_size < ETH_HLEN + ip_header_len + sizeof(struct udphdr)) continue;  // too short for UDP header
+            struct udphdr *udp = (struct udphdr *)(buffer + ETH_HLEN + ip_header_len);     // grep -A 10 "struct udphdr" /usr/include/linux/udp.h 
             sport = ntohs(udp->source);
             dport = ntohs(udp->dest);
             strcpy(proto, "UDP");
@@ -223,7 +230,9 @@ int main() {
         key.dport = dport;
         key.protocol = ip->protocol;
             
-        update_flow(&key, ntohs(ip->tot_len));
+        if (update_flow(&key, ntohs(ip->tot_len)) == -1) {
+            fprintf(stderr, "Flow table full, not adding the packet.\n");
+        }
         //--------------------------------------------------------------------------------
 
 

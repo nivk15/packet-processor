@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -g
 
 sniffer: main.c
 	$(CC) $(CFLAGS) main.c -o sniffer
