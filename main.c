@@ -16,7 +16,7 @@
 
 
 //--------------------------------------------------------------------------------
-// Part 6  (flow tracking - data structures and functions)
+//   (flow tracking - data structures and functions)
 struct flow_key {
     uint32_t saddr;
     uint32_t daddr;
@@ -159,7 +159,7 @@ int main() {
     sigaction(SIGINT, &sa, NULL);
 
 
-    // Part 1   (capture raw packets)
+    //   (capture raw packets)
     sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sock == -1) {
         perror("socket");
@@ -181,7 +181,7 @@ int main() {
             return 1;
         }
         //--------------------------------------------------------------------------------
-        // Part 2  (parsing Ethernet header)
+        //   (parsing Ethernet header)
         if ((size_t)packet_size < ETH_HLEN) continue;     // too short for Ethernet header
 
         struct ethhdr *eth = (struct ethhdr *)buffer;           // grep -A 5 "struct ethhdr" /usr/include/linux/if_ether.h
@@ -190,14 +190,14 @@ int main() {
         if (ntohs(eth->h_proto) != 0x0800) continue;           // 0x0800 is the code for IPv4
         //--------------------------------------------------------------------------------
 
-        // Part 3  (parsing IP header)
+        //   (parsing IP header)
         if ((size_t)packet_size < ETH_HLEN + sizeof(struct iphdr)) continue;       // too short for IP header
 
         struct iphdr *ip = (struct iphdr *)(buffer + ETH_HLEN);           // grep -A 25 "struct iphdr" /usr/include/linux/ip.h
 
         // --------------------------------------------------------------------------------
 
-        // Part 4  (parsing TCP & UDP headers to get source and destination ports)
+        //  (parsing TCP & UDP headers to get source and destination ports)
 
         int sport = 0, dport = 0;
         char proto[16];
@@ -222,7 +222,7 @@ int main() {
         }
         //--------------------------------------------------------------------------------
 
-        // Part 6  (flow tracking - updating)
+        // (flow tracking - updating)
         struct flow_key key;
         key.saddr = ip->saddr;
         key.daddr = ip->daddr;
