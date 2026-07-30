@@ -59,17 +59,8 @@ SRC IP:PORT               DST IP:PORT               PROTO    PKTS     BYTES     
 ## Project Structure
 
 ```
-├── main.c
-├── Makefile
-└── README.md
+├── main.c        — capture loop, signal handling, packet parsing
+├── flow.h        — structs, defines, and function declarations
+├── flow.c        — flow table logic (hash, insert, update, display)
+└── Makefile
 ```
-
-## Future Improvements
-
-- Command-line flags (`--verbose`, `--filter`, `--interface`)
-- BPF-style packet filtering
-- PCAP export (Wireshark-compatible)
-- IPv6 support
-- VLAN (802.1Q) tag parsing
-- Multi-file code organization
-- Flow timeout and expiry
