@@ -7,7 +7,9 @@
 struct flow_stats flow_table[TABLE_SIZE];
 
 uint32_t hash_flow(struct flow_key *key) {
-    uint32_t hash = key->saddr ^ key->daddr ^ key->sport ^ key->dport ^ key->protocol;
+    // added different multiplication to eliminate the commutative of XOR. 
+    // and using prime-numbers because multiplying by them spreads values more uniformly. (share less common factor with TABLE_SIZE)
+    uint32_t hash = (key->saddr * 5) ^ (key->daddr * 7) ^ (key->sport * 13) ^ (key->dport * 17) ^ (key->protocol * 23) ;
     return hash % TABLE_SIZE;
 }
 
