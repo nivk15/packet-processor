@@ -10,7 +10,7 @@ Captures live network traffic, parses protocol headers (Ethernet, IP, TCP, UDP, 
 - Protocol parsing: Ethernet, IPv4, TCP, UDP, ICMP
 - Flow classification by 5-tuple (src IP, dst IP, src port, dst port, protocol)
 - Hash table with linear probing for flow tracking
-- Live terminal dashboard showing top 20 flows sorted by bytes
+- Live terminal dashboard showing top flows sorted by bytes (configurable with -n)
 - Clean exit on `Ctrl+C` with full flow summary
 - Async-signal-safe signal handling using `sigaction`
 
@@ -22,13 +22,26 @@ make
 
 ## Usage
 
-Requires root privileges for raw socket access:
+Requires root privileges for raw socket access.
+
+To list available interfaces, run `ip link show`.
 
 ```bash
-sudo ./sniffer
+sudo ./sniffer                    # capture all interfaces
+sudo ./sniffer -i eth0            # capture specific interface
+sudo ./sniffer -i eth0 -n 10      # show top 10 flows
+sudo ./sniffer --help             # show usage
 ```
 
 Press `Ctrl+C` to stop and display the full flow summary.
+
+## Options
+
+```
+-i, --interface   Network interface to capture on (e.g. eth0)
+-n, --rows        Number of flows to display (default: 20)
+-h, --help        Show this help message
+```
 
 ## Example Output
 
