@@ -45,7 +45,7 @@ Press `Ctrl+C` to stop and display the full flow summary.
 
 ## Example Output
 
-### Live Dashboard
+### `sudo ./sniffer`
 ```
 SRC IP:PORT               DST IP:PORT               PROTO    PKTS     BYTES      DURATION
 127.0.0.1:32843           127.0.0.1:47244           TCP      5338     12340472   15s
