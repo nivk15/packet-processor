@@ -11,6 +11,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <net/if.h>
+#include <netpacket/packet.h>
 #include "flow.h"
 
 volatile sig_atomic_t got_sigint = 0;
@@ -20,10 +24,44 @@ void handle_sigint(int sig) {
     got_sigint = 1;
 }
 
+void print_usage(const char *prog) {
+    printf("Usage: %s [-i interface] [-n rows] [-h]\n", prog);
+    printf("  -i, --interface   Network interface to capture on (e.g. eth0)\n");
+    printf("  -n, --rows        Number of flows to display (default: 20)\n");
+    printf("  -h, --help        Show this help message\n");
+}
 
 //--------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------
-int main() {
+int main(int argc, char *argv[]) {
+
+    char *interface = NULL;
+    int rows = 20;
+
+    static struct option long_opts[] = {
+        { "interface", required_argument, NULL, 'i' },
+        { "rows",      required_argument, NULL, 'n' },
+        { "help",      no_argument,       NULL, 'h' },
+        { NULL, 0, NULL, 0 }
+    };
+
+    int opt;
+    while ((opt = getopt_long(argc, argv, "i:n:h", long_opts, NULL)) != -1) {
+        switch (opt) {
+            case 'i': interface = optarg; break;
+            case 'n': {
+                char *end;
+                rows = (int)strtol(optarg, &end, 10);
+                if (*end != '\0' || rows <= 0) {
+                    fprintf(stderr, "Invalid row count: %s\n", optarg);
+                    return 1;
+                }
+                break;
+            }
+            case 'h': print_usage(argv[0]); return 0;
+            default:  print_usage(argv[0]); return 1;
+        }
+    }
 
     struct sigaction sa;
     sa.sa_handler = handle_sigint;
@@ -37,6 +75,23 @@ int main() {
     if (sock == -1) {
         perror("socket");
         return 1;
+    }
+
+    if (interface != NULL) {
+        struct sockaddr_ll sll = {0};
+        sll.sll_family   = AF_PACKET;
+        sll.sll_protocol = htons(ETH_P_ALL);
+        sll.sll_ifindex  = if_nametoindex(interface);
+        if (sll.sll_ifindex == 0) {
+            fprintf(stderr, "Unknown interface: %s\n", interface);
+            close(sock);
+            return 1;
+        }
+        if (bind(sock, (struct sockaddr *)&sll, sizeof(sll)) == -1) {
+            perror("bind");
+            close(sock);
+            return 1;
+        }
     }
 
     unsigned char buffer[65535];
@@ -112,7 +167,7 @@ int main() {
         // clear screen: * move cursor to top-left:  \033[H   
         //               * erase everything from cursor to end of screen: \033[J 
         printf("\033[H\033[J");   
-        print_flows(flow_table, 20);        // show live only 20 rows to work in terminal size window.
+        print_flows(flow_table, rows);
 
     }
 
