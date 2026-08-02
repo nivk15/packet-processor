@@ -5,6 +5,7 @@
 #include <time.h>
 
 #define TABLE_SIZE 1024
+#define FLOW_TIMEOUT 30       // seconds of silence before a flow is considered dead
 
 struct flow_key {
     uint32_t saddr;
@@ -27,8 +28,9 @@ extern struct flow_stats flow_table[TABLE_SIZE];
 
 uint32_t hash_flow(struct flow_key *key);
 int keys_match(struct flow_key *a, struct flow_key *b);
+int flow_expired(struct flow_stats *f, time_t now);
 int update_flow(struct flow_key *key, uint32_t packet_size);
 int compar(const void *a, const void *b);
-int print_flows(struct flow_stats *table, int limit);
+int print_flows(struct flow_stats *table, int limit, int hide_expired);
 
 #endif

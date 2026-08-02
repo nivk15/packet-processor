@@ -167,12 +167,12 @@ int main(int argc, char *argv[]) {
         // clear screen: * move cursor to top-left:  \033[H   
         //               * erase everything from cursor to end of screen: \033[J 
         printf("\033[H\033[J");   
-        print_flows(flow_table, rows);
+        print_flows(flow_table, rows, 1);       // live view: hide flows that went idle
 
     }
 
     printf("\033[H\033[J");
-    int total = print_flows(flow_table, TABLE_SIZE);
+    int total = print_flows(flow_table, TABLE_SIZE, 0);     // summary: show everything captured
     printf("\n(Total flows tracked: %d)\n", total);
     close(sock);
     return 0;

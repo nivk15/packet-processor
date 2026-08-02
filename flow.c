@@ -21,35 +21,53 @@ int keys_match(struct flow_key *a, struct flow_key *b) {
            a->protocol == b->protocol;
 }
 
+int flow_expired(struct flow_stats *f, time_t now) {
+    return difftime(now, f->last_seen) > FLOW_TIMEOUT;
+}
+
 int update_flow(struct flow_key *key, uint32_t packet_size) {
     uint32_t hashed_key = hash_flow(key);
+    time_t now = time(NULL);        // one reference point for the whole probe
 
-    int i;
-    for (i = 0; i < TABLE_SIZE; i++) {
+    int empty_slot = -1;            // first never-used slot in the chain
+    int expired_slot = -1;          // expired flow that has been quiet the longest (LRU)
+
+    for (int i = 0; i < TABLE_SIZE; i++) {
         uint32_t index = (hashed_key + i) % TABLE_SIZE;
 
         if (!flow_table[index].active) {
-            // empty slot -> new flow
-            flow_table[index].key = *key;
-            flow_table[index].packets = 1;
-            flow_table[index].bytes = packet_size;
-            time_t t = time(NULL);
-            flow_table[index].first_seen = t;
-            flow_table[index].last_seen = t;
-            flow_table[index].active = 1;
+            // an empty slot ends the chain -> the key is not in the table
+            empty_slot = index;
             break;
         }
         if (keys_match(&flow_table[index].key, key)) {
             // same flow
             flow_table[index].packets += 1;
             flow_table[index].bytes += packet_size;
-            flow_table[index].last_seen = time(NULL);
-            break;
+            flow_table[index].last_seen = now;
+            return 0;
         }
-        // different flow -> try next slot (continue loop)
+        // different flow -> reusable if expired, keep the least recently used one
+        if (flow_expired(&flow_table[index], now)) {
+            if (expired_slot == -1 ||
+                flow_table[index].last_seen < flow_table[expired_slot].last_seen) {
+                expired_slot = index;
+            }
+        }
     }
 
-    return i == TABLE_SIZE ? -1 : 0;
+    // never mark a slot inactive - that would break the probe chain.
+    // prefer an unused slot, only overwrite an expired flow when there is none.
+    int slot = (empty_slot != -1) ? empty_slot : expired_slot;
+    if (slot == -1) return -1;      // table full and nothing has expired
+
+    flow_table[slot].key = *key;
+    flow_table[slot].packets = 1;
+    flow_table[slot].bytes = packet_size;
+    flow_table[slot].first_seen = now;
+    flow_table[slot].last_seen = now;
+    flow_table[slot].active = 1;
+    return 0;
 }
 
 int compar(const void *a, const void *b) {
@@ -66,16 +84,17 @@ int compar(const void *a, const void *b) {
     } else return -1;
 }
 
-int print_flows(struct flow_stats *table, int limit) {
+int print_flows(struct flow_stats *table, int limit, int hide_expired) {
     printf("%-25s %-25s %-8s %-8s %-10s %s\n",
            "SRC IP:PORT", "DST IP:PORT", "PROTO", "PKTS", "BYTES", "DURATION");
 
+    time_t now = time(NULL);
     struct flow_stats active[TABLE_SIZE];
     int n = 0;
     for (int i = 0; i < TABLE_SIZE; i++) {
-        if (table[i].active) {
-            active[n++] = table[i];
-        }
+        if (!table[i].active) continue;
+        if (hide_expired && flow_expired(&table[i], now)) continue;
+        active[n++] = table[i];
     }
 
     qsort(active, n, sizeof(struct flow_stats), compar);
