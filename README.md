@@ -11,6 +11,7 @@ Captures live network traffic, parses protocol headers (Ethernet, IP, TCP, UDP, 
 - Flow classification by 5-tuple (src IP, dst IP, src port, dst port, protocol)
 - Hash table with linear probing for flow tracking
 - Live terminal dashboard showing top flows sorted by bytes (configurable with -n)
+- Idle flow expiry with LRU slot reuse — flows quiet for 30s drop off the live view
 - Clean exit on `Ctrl+C` with full flow summary
 - Async-signal-safe signal handling using `sigaction`
 
@@ -69,7 +70,8 @@ SRC IP:PORT               DST IP:PORT               PROTO    PKTS     BYTES     
 3. **Parse IP** — Overlays `struct iphdr` at byte 14 to extract source/destination IPs, protocol, and packet length
 4. **Parse TCP/UDP** — Overlays `struct tcphdr` or `struct udphdr` at the calculated offset to extract port numbers
 5. **Track Flows** — Hashes the 5-tuple (src IP, dst IP, src port, dst port, protocol) and stores per-flow statistics in a hash table with linear probing
-6. **Display** — Clears the terminal and reprints the flow table sorted by bytes after every packet, creating a live dashboard
+6. **Expire Idle Flows** — Flows with no packets for `FLOW_TIMEOUT` seconds are hidden from the live view and their slots become reusable. Slots are never cleared in place — removing an entry mid-chain would break linear probing and allow duplicate flows
+7. **Display** — Redraws the whole table after every tracked packet, sorted by total bytes per flow, creating a live dashboard. The exit summary shows every flow still in the table, including expired ones
 
 ## Project Structure
 
