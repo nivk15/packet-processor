@@ -10,5 +10,13 @@ main.o: main.c flow.h
 flow.o: flow.c flow.h
 	$(CC) $(CFLAGS) -c flow.c
 
+# test_runner links flow.o but not main.o - test.c has its own main()
+test: test.o flow.o
+	$(CC) test.o flow.o -o test_runner
+	./test_runner
+
+test.o: test.c flow.h
+	$(CC) $(CFLAGS) -c test.c
+
 clean:
-	rm -f sniffer *.o
+	rm -f sniffer test_runner *.o

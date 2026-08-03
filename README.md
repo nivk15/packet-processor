@@ -21,6 +21,18 @@ Captures live network traffic, parses protocol headers (Ethernet, IP, TCP, UDP, 
 make
 ```
 
+## Testing
+
+Unit tests cover the flow table logic — hashing, key matching, insertion,
+timeout expiry, and LRU slot reuse. No root or network access needed: the tests
+call `update_flow` directly with synthetic flow keys, which also makes it
+possible to exercise paths the running program rarely reaches, such as a full
+table or an evicted flow.
+
+```bash
+make test
+```
+
 ## Usage
 
 Requires root privileges for raw socket access.

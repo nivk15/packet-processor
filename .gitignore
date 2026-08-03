@@ -1,4 +1,5 @@
 sniffer
+test_runner
 *.o
 old.c
 output.txt
